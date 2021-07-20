@@ -10,14 +10,14 @@
 
 #ifndef OPENSSL_EVPERR_H
 # define OPENSSL_EVPERR_H
-# pragma once
+// # pragma once
 
-# include <openssl/macros.h>
-# ifndef OPENSSL_NO_DEPRECATED_3_0
-#  define HEADER_EVPERR_H
-# endif
+// # include <openssl/macros.h>
+// # ifndef OPENSSL_NO_DEPRECATED_3_0
+// #  define HEADER_EVPERR_H
+// # endif
 
-# include <openssl/opensslconf.h>
+// # include <openssl/opensslconf.h>
 # include <openssl/symhacks.h>
 
 
@@ -227,6 +227,7 @@ int ERR_load_EVP_strings(void);
 # define EVP_R_ONLY_ONESHOT_SUPPORTED                     177
 # define EVP_R_OPERATION_NOT_SUPPORTED_FOR_THIS_KEYTYPE   150
 # define EVP_R_OPERATON_NOT_INITIALIZED                   151
+# define EVP_R_OUTPUT_WOULD_OVERFLOW                      184
 # define EVP_R_PARAMETER_TOO_LARGE                        187
 # define EVP_R_PARTIALLY_OVERLAPPING                      162
 # define EVP_R_PBKDF2_ERROR                               181
