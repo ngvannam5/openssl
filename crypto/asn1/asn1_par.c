@@ -1,14 +1,63 @@
-/*
- * Copyright 1995-2017 The OpenSSL Project Authors. All Rights Reserved.
+/* crypto/asn1/asn1_par.c */
+/* Copyright (C) 1995-1998 Eric Young (eay@cryptsoft.com)
+ * All rights reserved.
  *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
+ * This package is an SSL implementation written
+ * by Eric Young (eay@cryptsoft.com).
+ * The implementation was written so as to conform with Netscapes SSL.
+ *
+ * This library is free for commercial and non-commercial use as long as
+ * the following conditions are aheared to.  The following conditions
+ * apply to all code found in this distribution, be it the RC4, RSA,
+ * lhash, DES, etc., code; not just the SSL code.  The SSL documentation
+ * included with this distribution is covered by the same copyright terms
+ * except that the holder is Tim Hudson (tjh@cryptsoft.com).
+ *
+ * Copyright remains Eric Young's, and as such any Copyright notices in
+ * the code are not to be removed.
+ * If this package is used in a product, Eric Young should be given attribution
+ * as the author of the parts of the library used.
+ * This can be in the form of a textual message at program startup or
+ * in documentation (online or textual) provided with the package.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. All advertising materials mentioning features or use of this software
+ *    must display the following acknowledgement:
+ *    "This product includes cryptographic software written by
+ *     Eric Young (eay@cryptsoft.com)"
+ *    The word 'cryptographic' can be left out if the rouines from the library
+ *    being used are not cryptographic related :-).
+ * 4. If you include any Windows specific code (or a derivative thereof) from
+ *    the apps directory (application code) you must include an acknowledgement:
+ *    "This product includes software written by Tim Hudson (tjh@cryptsoft.com)"
+ *
+ * THIS SOFTWARE IS PROVIDED BY ERIC YOUNG ``AS IS'' AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR OR CONTRIBUTORS BE LIABLE
+ * FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+ * DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+ * OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+ * HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+ * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+ * SUCH DAMAGE.
+ *
+ * The licence and distribution terms for any publically available version or
+ * derivative of this code cannot be changed.  i.e. this code cannot simply be
+ * copied and put under another distribution licence
+ * [including the GNU Public Licence.]
  */
 
 #include <stdio.h>
-#include "internal/cryptlib.h"
+#include "cryptlib.h"
 #include <openssl/buffer.h>
 #include <openssl/objects.h>
 #include <openssl/asn1.h>
@@ -17,44 +66,25 @@
 #define ASN1_PARSE_MAXDEPTH 128
 #endif
 
+static int asn1_print_info(BIO *bp, int tag, int xclass, int constructed,
+                           int indent);
 static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
                        int offset, int depth, int indent, int dump);
-static int asn1_print_info(BIO *bp, long offset, int depth, int hl, long len,
-                           int tag, int xclass, int constructed, int indent)
+static int asn1_print_info(BIO *bp, int tag, int xclass, int constructed,
+                           int indent)
 {
+    static const char fmt[] = "%-18s";
     char str[128];
     const char *p;
-    int pop_f_prefix = 0;
-    long saved_indent = -1;
-    int i = 0;
 
     if (constructed & V_ASN1_CONSTRUCTED)
         p = "cons: ";
     else
         p = "prim: ";
-    if (constructed != (V_ASN1_CONSTRUCTED | 1)) {
-        if (BIO_snprintf(str, sizeof(str), "%5ld:d=%-2d hl=%ld l=%4ld %s",
-                         offset, depth, (long)hl, len, p) <= 0)
-            goto err;
-    } else {
-        if (BIO_snprintf(str, sizeof(str), "%5ld:d=%-2d hl=%ld l=inf  %s",
-                         offset, depth, (long)hl, p) <= 0)
-            goto err;
-    }
-    if (BIO_set_prefix(bp, str) <= 0) {
-        if ((bp = BIO_push(BIO_new(BIO_f_prefix()), bp)) == NULL)
-            goto err;
-        pop_f_prefix = 1;
-    }
-    saved_indent = BIO_get_indent(bp);
-    if (BIO_set_prefix(bp, str) <= 0
-        || BIO_set_indent(bp, indent) < 0)
+    if (BIO_write(bp, p, 6) < 6)
         goto err;
+    BIO_indent(bp, indent, 128);
 
-    /*
-     * BIO_set_prefix made a copy of |str|, so we can safely use it for
-     * something else, ASN.1 tag printout.
-     */
     p = str;
     if ((xclass & V_ASN1_PRIVATE) == V_ASN1_PRIVATE)
         BIO_snprintf(str, sizeof(str), "priv [ %d ] ", tag);
@@ -67,28 +97,22 @@ static int asn1_print_info(BIO *bp, long offset, int depth, int hl, long len,
     else
         p = ASN1_tag2str(tag);
 
-    i = (BIO_printf(bp, "%-18s", p) > 0);
+    if (BIO_printf(bp, fmt, p) <= 0)
+        goto err;
+    return (1);
  err:
-    if (saved_indent >= 0)
-        BIO_set_indent(bp, saved_indent);
-    if (pop_f_prefix) {
-        BIO *next = BIO_pop(bp);
-
-        BIO_free(bp);
-        bp = next;
-    }
-    return i;
+    return (0);
 }
 
 int ASN1_parse(BIO *bp, const unsigned char *pp, long len, int indent)
 {
-    return asn1_parse2(bp, &pp, len, 0, 0, indent, 0);
+    return (asn1_parse2(bp, &pp, len, 0, 0, indent, 0));
 }
 
 int ASN1_parse_dump(BIO *bp, const unsigned char *pp, long len, int indent,
                     int dump)
 {
-    return asn1_parse2(bp, &pp, len, 0, 0, indent, dump);
+    return (asn1_parse2(bp, &pp, len, 0, 0, indent, dump));
 }
 
 static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
@@ -101,19 +125,28 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
     ASN1_OBJECT *o = NULL;
     ASN1_OCTET_STRING *os = NULL;
     /* ASN1_BMPSTRING *bmp=NULL; */
-    int dump_indent, dump_cont = 0;
+    int dump_indent;
+
+#if 0
+    dump_indent = indent;
+#else
+    dump_indent = 6;            /* Because we know BIO_dump_indent() */
+#endif
 
     if (depth > ASN1_PARSE_MAXDEPTH) {
-        BIO_puts(bp, "BAD RECURSION DEPTH\n");
-        return 0;
+            BIO_puts(bp, "BAD RECURSION DEPTH\n");
+            return 0;
     }
 
-    dump_indent = 6;            /* Because we know BIO_dump_indent() */
     p = *pp;
     tot = p + length;
-    while (length > 0) {
+    op = p - 1;
+    while ((p < tot) && (op < p)) {
         op = p;
         j = ASN1_get_object(&p, &len, &tag, &xclass, length);
+#ifdef LINT
+        j = j;
+#endif
         if (j & 0x80) {
             if (BIO_write(bp, "Error in encoding\n", 18) <= 0)
                 goto end;
@@ -125,11 +158,22 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
         /*
          * if j == 0x21 it is a constructed indefinite length object
          */
-        if (!asn1_print_info(bp, (long)offset + (long)(op - *pp), depth,
-                             hl, len, tag, xclass, j, (indent) ? depth : 0))
+        if (BIO_printf(bp, "%5ld:", (long)offset + (long)(op - *pp))
+            <= 0)
+            goto end;
+
+        if (j != (V_ASN1_CONSTRUCTED | 1)) {
+            if (BIO_printf(bp, "d=%-2d hl=%ld l=%4ld ",
+                           depth, (long)hl, len) <= 0)
+                goto end;
+        } else {
+            if (BIO_printf(bp, "d=%-2d hl=%ld l=inf  ", depth, (long)hl) <= 0)
+                goto end;
+        }
+        if (!asn1_print_info(bp, tag, xclass, j, (indent) ? depth : 0))
             goto end;
         if (j & V_ASN1_CONSTRUCTED) {
-            const unsigned char *sp = p;
+            const unsigned char *sp;
 
             ep = p + len;
             if (BIO_write(bp, "\n", 1) <= 0)
@@ -140,6 +184,7 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
                 goto end;
             }
             if ((j == 0x21) && (len == 0)) {
+                sp = p;
                 for (;;) {
                     r = asn1_parse2(bp, &p, (long)(tot - p),
                                     offset + (p - *pp), depth + 1,
@@ -158,8 +203,7 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
 
                 while (p < ep) {
                     sp = p;
-                    r = asn1_parse2(bp, &p, tmp,
-                                    offset + (p - *pp), depth + 1,
+                    r = asn1_parse2(bp, &p, tmp, offset + (p - *pp), depth + 1,
                                     indent, dump);
                     if (r == 0) {
                         ret = 0;
@@ -193,18 +237,19 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
                         goto end;
                     i2a_ASN1_OBJECT(bp, o);
                 } else {
-                    if (BIO_puts(bp, ":BAD OBJECT") <= 0)
+                    if (BIO_write(bp, ":BAD OBJECT", 11) <= 0)
                         goto end;
-                    dump_cont = 1;
                 }
             } else if (tag == V_ASN1_BOOLEAN) {
-                if (len != 1) {
-                    if (BIO_puts(bp, ":BAD BOOLEAN") <= 0)
+                int ii;
+
+                opp = op;
+                ii = d2i_ASN1_BOOLEAN(NULL, &opp, len + hl);
+                if (ii < 0) {
+                    if (BIO_write(bp, "Bad boolean\n", 12) <= 0)
                         goto end;
-                    dump_cont = 1;
                 }
-                if (len > 0)
-                    BIO_printf(bp, ":%u", p[0]);
+                BIO_printf(bp, ":%d", ii);
             } else if (tag == V_ASN1_BMPSTRING) {
                 /* do the BMP thang */
             } else if (tag == V_ASN1_OCTET_STRING) {
@@ -261,8 +306,10 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
                         nl = 1;
                     }
                 }
-                ASN1_OCTET_STRING_free(os);
-                os = NULL;
+                if (os != NULL) {
+                    M_ASN1_OCTET_STRING_free(os);
+                    os = NULL;
+                }
             } else if (tag == V_ASN1_INTEGER) {
                 ASN1_INTEGER *bs;
                 int i;
@@ -284,11 +331,10 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
                             goto end;
                     }
                 } else {
-                    if (BIO_puts(bp, ":BAD INTEGER") <= 0)
+                    if (BIO_write(bp, "BAD INTEGER", 11) <= 0)
                         goto end;
-                    dump_cont = 1;
                 }
-                ASN1_INTEGER_free(bs);
+                M_ASN1_INTEGER_free(bs);
             } else if (tag == V_ASN1_ENUMERATED) {
                 ASN1_ENUMERATED *bs;
                 int i;
@@ -310,11 +356,10 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
                             goto end;
                     }
                 } else {
-                    if (BIO_puts(bp, ":BAD ENUMERATED") <= 0)
+                    if (BIO_write(bp, "BAD ENUMERATED", 14) <= 0)
                         goto end;
-                    dump_cont = 1;
                 }
-                ASN1_ENUMERATED_free(bs);
+                M_ASN1_ENUMERATED_free(bs);
             } else if (len > 0 && dump) {
                 if (!nl) {
                     if (BIO_write(bp, "\n", 1) <= 0)
@@ -325,18 +370,6 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
                                     dump_indent) <= 0)
                     goto end;
                 nl = 1;
-            }
-            if (dump_cont) {
-                int i;
-                const unsigned char *tmp = op + hl;
-                if (BIO_puts(bp, ":[") <= 0)
-                    goto end;
-                for (i = 0; i < len; i++) {
-                    if (BIO_printf(bp, "%02X", tmp[i]) <= 0)
-                        goto end;
-                }
-                if (BIO_puts(bp, "]") <= 0)
-                    goto end;
             }
 
             if (!nl) {
@@ -353,10 +386,12 @@ static int asn1_parse2(BIO *bp, const unsigned char **pp, long length,
     }
     ret = 1;
  end:
-    ASN1_OBJECT_free(o);
-    ASN1_OCTET_STRING_free(os);
+    if (o != NULL)
+        ASN1_OBJECT_free(o);
+    if (os != NULL)
+        M_ASN1_OCTET_STRING_free(os);
     *pp = p;
-    return ret;
+    return (ret);
 }
 
 const char *ASN1_tag2str(int tag)

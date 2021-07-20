@@ -4,6 +4,8 @@
 #
 # hacked by iang to do DH certs - CA
 
+RANDFILE              = ./.rnd
+
 ####################################################################
 [ req ]
 distinguished_name    = req_distinguished_name
