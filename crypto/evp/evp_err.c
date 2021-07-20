@@ -115,6 +115,8 @@ static const ERR_STRING_DATA EVP_str_reasons[] = {
     "operation not initialized"},
     {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_PARAMETER_TOO_LARGE),
     "parameter too large"},
+    {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_OUTPUT_WOULD_OVERFLOW),
+    "output would overflow"},
     {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_PARTIALLY_OVERLAPPING),
     "partially overlapping buffers"},
     {ERR_PACK(ERR_LIB_EVP, 0, EVP_R_PBKDF2_ERROR), "pbkdf2 error"},
