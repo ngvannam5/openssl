@@ -1,12 +1,3 @@
-/*
- * Copyright 2010-2016 The OpenSSL Project Authors. All Rights Reserved.
- *
- * Licensed under the Apache License 2.0 (the "License").  You may not use
- * this file except in compliance with the License.  You can obtain a copy
- * in the file LICENSE in the source distribution or at
- * https://www.openssl.org/source/license.html
- */
-
 #if defined( __VMS) && !defined( OPENSSL_NO_DECC_INIT) && \
  defined( __DECC) && !defined( __VAX) && (__CRTL_VER >= 70301000)
 # define USE_DECC_INIT 1
@@ -14,11 +5,17 @@
 
 #ifdef USE_DECC_INIT
 
-/*
- * ----------------------------------------------------------------------
- * decc_init() On non-VAX systems, uses LIB$INITIALIZE to set a collection
- * of C RTL features without using the DECC$* logical name method.
- * ----------------------------------------------------------------------
+/*-
+ * 2010-04-26 SMS.
+ *
+ *----------------------------------------------------------------------
+ *
+ *       decc_init()
+ *
+ *    On non-VAX systems, uses LIB$INITIALIZE to set a collection of C
+ *    RTL features without using the DECC$* logical name method.
+ *
+ *----------------------------------------------------------------------
  */
 
 # include <stdio.h>
@@ -59,7 +56,6 @@ decc_feat_t decc_feat_array[] = {
     /* List terminator. */
     {(char *)NULL, 0}
 };
-
 
 /* LIB$INITIALIZE initialization function. */
 

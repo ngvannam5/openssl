@@ -1,14 +1,7 @@
-#! /usr/bin/env perl
-# Copyright 2007-2018 The OpenSSL Project Authors. All Rights Reserved.
-#
-# Licensed under the Apache License 2.0 (the "License").  You may not use
-# this file except in compliance with the License.  You can obtain a copy
-# in the file LICENSE in the source distribution or at
-# https://www.openssl.org/source/license.html
-
+#!/usr/bin/env perl
 
 # ====================================================================
-# Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
+# Written by Andy Polyakov <appro@fy.chalmers.se> for the OpenSSL
 # project. The module is, however, dual licensed under OpenSSL and
 # CRYPTOGAMS licenses depending on where you obtain it. For further
 # details see http://www.openssl.org/~appro/cryptogams/.
@@ -51,10 +44,7 @@
 # On z990 it was measured to perform 2.6-2.2 times better than
 # compiler-generated code, less for longer keys...
 
-# $output is the last argument if it looks like a file (it has an extension)
-# $flavour is the first argument if it doesn't look like a file
-$output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
-$flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
+$flavour = shift;
 
 if ($flavour =~ /3[12]/) {
 	$SIZE_T=4;
@@ -64,7 +54,8 @@ if ($flavour =~ /3[12]/) {
 	$g="g";
 }
 
-$output and open STDOUT,">$output";
+while (($output=shift) && ($output!~/^\w[\w\-]*\.\w+$/)) {}
+open STDOUT,">$output";
 
 $stdframe=16*$SIZE_T+4*8;
 
@@ -147,7 +138,7 @@ $code.=<<___;
 	lghi	$NHI,0
 	alcgr	$NHI,$nhi
 
-	la	$j,8		# j=1
+	la	$j,8(%r0)	# j=1
 	lr	$count,$num
 
 .align	16
@@ -199,7 +190,7 @@ $code.=<<___;
 	lghi	$NHI,0
 	alcgr	$NHI,$nhi
 
-	la	$j,8		# j=1
+	la	$j,8(%r0)	# j=1
 	lr	$count,$num
 
 .align	16
@@ -243,7 +234,7 @@ $code.=<<___;
 	la	$ap,$stdframe($sp)
 	ahi	$num,1		# restore $num, incidentally clears "borrow"
 
-	la	$j,0
+	la	$j,0(%r0)
 	lr	$count,$num
 .Lsub:	lg	$alo,0($j,$ap)
 	lg	$nlo,0($j,$np)
@@ -257,7 +248,7 @@ $code.=<<___;
 	lghi	$NHI,-1
 	xgr	$NHI,$AHI
 
-	la	$j,0
+	la	$j,0(%r0)
 	lgr	$count,$num
 .Lcopy:	lg	$ahi,$stdframe($j,$sp)	# conditional copy
 	lg	$alo,0($j,$rp)

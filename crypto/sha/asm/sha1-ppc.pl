@@ -1,14 +1,7 @@
-#! /usr/bin/env perl
-# Copyright 2006-2016 The OpenSSL Project Authors. All Rights Reserved.
-#
-# Licensed under the Apache License 2.0 (the "License").  You may not use
-# this file except in compliance with the License.  You can obtain a copy
-# in the file LICENSE in the source distribution or at
-# https://www.openssl.org/source/license.html
-
+#!/usr/bin/env perl
 
 # ====================================================================
-# Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
+# Written by Andy Polyakov <appro@fy.chalmers.se> for the OpenSSL
 # project. The module is, however, dual licensed under OpenSSL and
 # CRYPTOGAMS licenses depending on where you obtain it. For further
 # details see http://www.openssl.org/~appro/cryptogams/.
@@ -26,10 +19,7 @@
 # PPC970,gcc-4.0.0	+76%	+59%
 # Power6,xlc-7		+68%	+33%
 
-# $output is the last argument if it looks like a file (it has an extension)
-# $flavour is the first argument if it doesn't look like a file
-$output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
-$flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
+$flavour = shift;
 
 if ($flavour =~ /64/) {
 	$SIZE_T	=8;
@@ -47,7 +37,7 @@ if ($flavour =~ /64/) {
 	$PUSH	="stw";
 } else { die "nonsense $flavour"; }
 
-# Define endianness based on flavour
+# Define endianess based on flavour
 # i.e.: linux64le
 $LITTLE_ENDIAN = ($flavour=~/le$/) ? $SIZE_T : 0;
 
@@ -56,8 +46,7 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/ppc-xlate.pl" and -f $xlate) or
 die "can't locate ppc-xlate.pl";
 
-open STDOUT,"| $^X $xlate $flavour \"$output\""
-    or die "can't call $xlate: $!";
+open STDOUT,"| $^X $xlate $flavour ".shift || die "can't call $xlate: $!";
 
 $FRAME=24*$SIZE_T+64;
 $LOCALS=6*$SIZE_T;

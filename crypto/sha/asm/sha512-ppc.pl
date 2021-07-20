@@ -1,11 +1,4 @@
-#! /usr/bin/env perl
-# Copyright 2006-2016 The OpenSSL Project Authors. All Rights Reserved.
-#
-# Licensed under the Apache License 2.0 (the "License").  You may not use
-# this file except in compliance with the License.  You can obtain a copy
-# in the file LICENSE in the source distribution or at
-# https://www.openssl.org/source/license.html
-
+#!/usr/bin/env perl
 
 # ====================================================================
 # Written by Andy Polyakov <appro@openssl.org> for the OpenSSL
@@ -26,7 +19,7 @@
 #
 # (*)	64-bit code in 32-bit application context, which actually is
 #	on TODO list. It should be noted that for safe deployment in
-#	32-bit *multi-threaded* context asynchronous signals should be
+#	32-bit *mutli-threaded* context asyncronous signals should be
 #	blocked upon entry to SHA512 block routine. This is because
 #	32-bit signaling procedure invalidates upper halves of GPRs.
 #	Context switch procedure preserves them, but not signaling:-(
@@ -41,10 +34,8 @@
 # block signals prior calling this routine. For the record, in 32-bit
 # context R2 serves as TLS pointer, while in 64-bit context - R13.
 
-# $output is the last argument if it looks like a file (it has an extension)
-# $flavour is the first argument if it doesn't look like a file
-$output = $#ARGV >= 0 && $ARGV[$#ARGV] =~ m|\.\w+$| ? pop : undef;
-$flavour = $#ARGV >= 0 && $ARGV[0] !~ m|\.| ? shift : undef;
+$flavour=shift;
+$output =shift;
 
 if ($flavour =~ /64/) {
 	$SIZE_T=8;
@@ -71,8 +62,7 @@ $0 =~ m/(.*[\/\\])[^\/\\]+$/; $dir=$1;
 ( $xlate="${dir}../../perlasm/ppc-xlate.pl" and -f $xlate) or
 die "can't locate ppc-xlate.pl";
 
-open STDOUT,"| $^X $xlate $flavour \"$output\""
-    or die "can't call $xlate: $!";
+open STDOUT,"| $^X $xlate $flavour $output" || die "can't call $xlate: $!";
 
 if ($output =~ /512/) {
 	$func="sha512_block_ppc";
